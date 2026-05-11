@@ -1,36 +1,114 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Grism
 
-## Getting Started
+A local, AI-native LaTeX editor powered by Claude. Write `.tex`, pick a compile engine, see the PDF update live, and chat with Claude about your document — all running on your machine.
 
-First, run the development server:
+## Features
+
+- **CodeMirror 6 editor** with LaTeX syntax highlighting
+- **Live PDF preview** via react-pdf
+- **4 compile engines** — pdflatex, xelatex, lualatex, tectonic
+- **Claude chat panel** — project-aware, streams responses, knows your open file
+- **Multi-file projects** — file tree, create/delete files
+- **MCP server** — lets Claude Code work directly on your LaTeX files
+
+## Stack
+
+- Next.js 16 (App Router) + TypeScript
+- CodeMirror 6 + `@codemirror/legacy-modes` (stex)
+- react-pdf + pdfjs
+- @anthropic-ai/sdk (streaming SSE)
+- shadcn/ui + Tailwind
+- TeX Live (local install)
+
+## Setup
+
+### Prerequisites
+
+- Node.js >= 20
+- TeX Live with pdflatex, xelatex, lualatex installed
+  - Windows: [tug.org/texlive](https://tug.org/texlive/)
+  - macOS: `brew install --cask mactex`
+  - Ubuntu: `sudo apt install texlive-full`
+- (Optional) Tectonic: [tectonic.typesetting.io](https://tectonic.typesetting.io/)
+
+### Install
+
+```bash
+git clone https://github.com/macint0/Grism
+cd grism
+npm install
+```
+
+### Configure
+
+Create `.env.local`:
+
+```env
+ANTHROPIC_API_KEY=your_api_key_here
+```
+
+Get a key at [console.anthropic.com](https://console.anthropic.com). Without one, Grism runs in mock mode — the UI works but Claude responses are placeholder text.
+
+If your TeX Live is not at `C:\texlive\2026\bin\windows`, set:
+
+```env
+TEX_BIN_PATH=C:\path\to\texlive\bin\windows
+```
+
+### Run
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## MCP Server (Claude Code integration)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Grism ships an MCP server that lets Claude Code read, write, and compile your LaTeX projects directly.
 
-## Learn More
+Add to `~/.mcp.json` (or `.mcp.json` in your workspace):
 
-To learn more about Next.js, take a look at the following resources:
+```json
+{
+  "mcpServers": {
+    "grism": {
+      "command": "node",
+      "args": ["--import", "tsx/esm", "mcp-server/index.ts"],
+      "cwd": "/path/to/grism"
+    }
+  }
+}
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Claude Code then has access to `list_projects`, `list_files`, `read_file`, `write_file`, and `compile` tools.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project Structure
 
-## Deploy on Vercel
+```
+grism/
+├── app/
+│   ├── api/
+│   │   ├── compile/route.ts
+│   │   ├── files/route.ts
+│   │   ├── projects/route.ts
+│   │   └── chat/route.ts
+│   └── page.tsx
+├── components/
+│   ├── Editor.tsx
+│   ├── PdfPreview.tsx
+│   ├── FileTree.tsx
+│   ├── ChatPanel.tsx
+│   └── CompilerDropdown.tsx
+├── lib/
+│   ├── latex.ts
+│   ├── projects.ts
+│   └── anthropic.ts
+├── mcp-server/
+│   └── index.ts
+└── projects/          ← your LaTeX projects live here (gitignored)
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
