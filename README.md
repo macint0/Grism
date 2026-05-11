@@ -1,73 +1,14 @@
 # Grism
 
-A local, AI-native LaTeX editor powered by Claude. Write `.tex`, pick a compile engine, see the PDF update live, and chat with Claude about your document — all running on your machine.
+A local LaTeX editor with an MCP server so Claude Code can read, write, and compile your `.tex` files directly — no screenshots, no copy-paste.
 
-## Features
+## What it is
 
-- **CodeMirror 6 editor** with LaTeX syntax highlighting
-- **Live PDF preview** via react-pdf
-- **4 compile engines** — pdflatex, xelatex, lualatex, tectonic
-- **Claude chat panel** — project-aware, streams responses, knows your open file
-- **Multi-file projects** — file tree, create/delete files
-- **MCP server** — lets Claude Code work directly on your LaTeX files
+Grism is a Next.js app that runs on your machine. It gives you a basic LaTeX editor with PDF preview, and more importantly, an MCP server that plugs into Claude Code so you can work on LaTeX with Claude like a pair programmer.
 
-## Stack
+## MCP server
 
-- Next.js 16 (App Router) + TypeScript
-- CodeMirror 6 + `@codemirror/legacy-modes` (stex)
-- react-pdf + pdfjs
-- @anthropic-ai/sdk (streaming SSE)
-- shadcn/ui + Tailwind
-- TeX Live (local install)
-
-## Setup
-
-### Prerequisites
-
-- Node.js >= 20
-- TeX Live with pdflatex, xelatex, lualatex installed
-  - Windows: [tug.org/texlive](https://tug.org/texlive/)
-  - macOS: `brew install --cask mactex`
-  - Ubuntu: `sudo apt install texlive-full`
-- (Optional) Tectonic: [tectonic.typesetting.io](https://tectonic.typesetting.io/)
-
-### Install
-
-```bash
-git clone https://github.com/macint0/Grism
-cd grism
-npm install
-```
-
-### Configure
-
-Create `.env.local`:
-
-```env
-ANTHROPIC_API_KEY=your_api_key_here
-```
-
-Get a key at [console.anthropic.com](https://console.anthropic.com). Without one, Grism runs in mock mode — the UI works but Claude responses are placeholder text.
-
-If your TeX Live is not at `C:\texlive\2026\bin\windows`, set:
-
-```env
-TEX_BIN_PATH=C:\path\to\texlive\bin\windows
-```
-
-### Run
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
-
-## MCP Server (Claude Code integration)
-
-Grism ships an MCP server that lets Claude Code read, write, and compile your LaTeX projects directly.
-
-Add to `~/.mcp.json` (or `.mcp.json` in your workspace):
+Add to `~/.mcp.json`:
 
 ```json
 {
@@ -81,33 +22,54 @@ Add to `~/.mcp.json` (or `.mcp.json` in your workspace):
 }
 ```
 
-Claude Code then has access to `list_projects`, `list_files`, `read_file`, `write_file`, and `compile` tools.
+Claude Code gets these tools:
 
-## Project Structure
+| Tool | What it does |
+|------|-------------|
+| `list_projects` | List all projects |
+| `list_files` | List files in a project |
+| `read_file` | Read a file |
+| `write_file` | Write a file |
+| `compile` | Compile with pdflatex / xelatex / lualatex |
 
+## Setup
+
+### Prerequisites
+
+- Node.js >= 20
+- TeX Live — [tug.org/texlive](https://tug.org/texlive/) (Windows) or `brew install --cask mactex` (macOS)
+
+### Install
+
+```bash
+git clone https://github.com/macint0/Grism
+cd Grism
+npm install
 ```
-grism/
-├── app/
-│   ├── api/
-│   │   ├── compile/route.ts
-│   │   ├── files/route.ts
-│   │   ├── projects/route.ts
-│   │   └── chat/route.ts
-│   └── page.tsx
-├── components/
-│   ├── Editor.tsx
-│   ├── PdfPreview.tsx
-│   ├── FileTree.tsx
-│   ├── ChatPanel.tsx
-│   └── CompilerDropdown.tsx
-├── lib/
-│   ├── latex.ts
-│   ├── projects.ts
-│   └── anthropic.ts
-├── mcp-server/
-│   └── index.ts
-└── projects/          ← your LaTeX projects live here (gitignored)
+
+### Configure
+
+Create `.env.local`:
+
+```env
+ANTHROPIC_API_KEY=your_api_key_here
 ```
+
+Without a key, the chat panel runs in mock mode — the rest of the app still works.
+
+If TeX Live is not at `C:\texlive\2026\bin\windows`, set:
+
+```env
+TEX_BIN_PATH=C:\path\to\texlive\bin\windows
+```
+
+### Run
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
 
 ## License
 
