@@ -84,18 +84,28 @@ export async function compileLatex(
     ]
   }
 
-  const log = await run(binary, args, projectDir)
-  const ok = fs.existsSync(pdfPath)
+  const { log, exitCode } = await run(binary, args, projectDir)
+  const ok = exitCode === 0 && fs.existsSync(pdfPath)
   return { ok, log, pdfPath: ok ? pdfPath : undefined }
 }
 
-function run(binary: string, args: string[], cwd: string): Promise<string> {
+function run(binary: string, args: string[], cwd: string): Promise<{ log: string; exitCode: number }> {
   return new Promise((resolve) => {
     const chunks: Buffer[] = []
-    const proc = spawn(binary, args, { cwd })
+    const sep = process.platform === 'win32' ? ';' : ':'
+    const proc = spawn(binary, args, {
+      cwd,
+      env: {
+        ...process.env,
+        // Make xdvipdfmx (xelatex) and kpathsea search the project dir for images/includes
+        TEXINPUTS: `.${sep}${cwd}${sep}`,
+        BIBINPUTS: `.${sep}${cwd}${sep}`,
+        BSTINPUTS: `.${sep}${cwd}${sep}`,
+      },
+    })
     proc.stdout.on('data', (d: Buffer) => chunks.push(d))
     proc.stderr.on('data', (d: Buffer) => chunks.push(d))
-    proc.on('close', () => resolve(Buffer.concat(chunks).toString('utf8')))
-    proc.on('error', (e) => resolve(`Process error: ${e.message}`))
+    proc.on('close', (code) => resolve({ log: Buffer.concat(chunks).toString('utf8'), exitCode: code ?? 1 }))
+    proc.on('error', (e) => resolve({ log: `Process error: ${e.message}`, exitCode: 1 }))
   })
 }

@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import FileTree from './FileTree'
 import CompilerDropdown from './CompilerDropdown'
 import ChatPanel from './ChatPanel'
+import CompileLog from './CompileLog'
 import type { Project, Engine, CompileResult } from '@/lib/types'
 
 const Editor = dynamic(() => import('./Editor'), { ssr: false })
@@ -30,6 +31,8 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
   const [newProjectName, setNewProjectName] = useState('')
   const [creatingProject, setCreatingProject] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
+  const [renamingProject, setRenamingProject] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
 
   const savedRef = useRef<string>('')
   const contentRef = useRef<string>('')
@@ -42,8 +45,11 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
     const data = await res.json() as { files: string[] }
     const fileList = data.files ?? []
     setFiles(fileList)
-    const main = fileList.includes('main.tex') ? 'main.tex' : fileList[0]
-    if (main) loadFile(projectId, main)
+    const saved = localStorage.getItem(`grism:openFile:${projectId}`)
+    const initial = (saved && fileList.includes(saved)) ? saved
+      : fileList.includes('main.tex') ? 'main.tex'
+      : fileList[0]
+    if (initial) loadFile(projectId, initial)
     else { setActiveFile(''); setContent('') }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -61,6 +67,10 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
   }, [])
 
   useEffect(() => { contentRef.current = content }, [content])
+
+  useEffect(() => {
+    if (activeFile) localStorage.setItem(`grism:openFile:${activeProjectId}`, activeFile)
+  }, [activeProjectId, activeFile])
 
   useEffect(() => {
     loadFiles(activeProjectId)
@@ -151,6 +161,17 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
     setCreatingProject(false)
   }, [newProjectName])
 
+  const handleRenameProject = useCallback(async (id: string, name: string) => {
+    if (!name.trim()) return
+    await fetch('/api/projects', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, name: name.trim() }),
+    })
+    setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name: name.trim() } : p))
+    setRenamingProject(false)
+  }, [])
+
   const handleDeleteProject = useCallback(async (id: string) => {
     await fetch('/api/projects', {
       method: 'DELETE',
@@ -206,15 +227,39 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
         <span className="text-zinc-100 font-semibold tracking-tight shrink-0">Prism</span>
 
         {/* Project selector */}
-        <select
-          value={activeProjectId}
-          onChange={(e) => setActiveProjectId(e.target.value)}
-          className="bg-zinc-800 border border-zinc-600 text-zinc-200 text-sm rounded px-2 py-1.5 focus:outline-none focus:border-indigo-500 max-w-[160px] truncate"
-        >
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
+        {renamingProject ? (
+          <input
+            autoFocus
+            type="text"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRenameProject(activeProjectId, renameValue)
+              if (e.key === 'Escape') setRenamingProject(false)
+            }}
+            onBlur={() => handleRenameProject(activeProjectId, renameValue)}
+            className="bg-zinc-700 border border-indigo-500 text-zinc-100 text-sm rounded px-2 py-1.5 focus:outline-none w-36"
+          />
+        ) : (
+          <div className="flex items-center gap-1">
+            <select
+              value={activeProjectId}
+              onChange={(e) => setActiveProjectId(e.target.value)}
+              className="bg-zinc-800 border border-zinc-600 text-zinc-200 text-sm rounded px-2 py-1.5 focus:outline-none focus:border-indigo-500 max-w-[140px] truncate"
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => { setRenameValue(projects.find(p => p.id === activeProjectId)?.name ?? ''); setRenamingProject(true) }}
+              className="text-zinc-500 hover:text-zinc-200 text-xs transition-colors"
+              title="Rename project"
+            >
+              ✏
+            </button>
+          </div>
+        )}
 
         {/* New project */}
         {creatingProject ? (
@@ -300,6 +345,7 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
             onFileSelect={handleFileSelect}
             onFileCreate={handleFileCreate}
             onFileDelete={handleFileDelete}
+            onFileUploaded={() => loadFiles(activeProjectId)}
           />
         </div>
 
@@ -351,15 +397,7 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
       )}
 
       {/* Log panel */}
-      {log && (
-        <div className={`shrink-0 max-h-40 overflow-auto font-mono text-xs p-3 border-t ${
-          compileError
-            ? 'bg-red-950 border-red-800 text-red-300'
-            : 'bg-zinc-900 border-zinc-700 text-zinc-400'
-        }`}>
-          <pre className="whitespace-pre-wrap">{log}</pre>
-        </div>
-      )}
+      {log && <CompileLog log={log} ok={!compileError} />}
     </div>
   )
 }

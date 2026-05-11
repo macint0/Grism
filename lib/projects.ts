@@ -76,6 +76,12 @@ export function createProject(name: string): Project {
   return { id, name }
 }
 
+export function renameProject(id: string, name: string): void {
+  const projectDir = safeProjectDir(id)
+  if (!projectDir) throw new Error('Invalid project ID')
+  writeName(projectDir, name)
+}
+
 export function deleteProject(id: string): void {
   const projectDir = safeProjectDir(id)
   if (!projectDir) throw new Error('Invalid project ID')

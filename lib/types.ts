@@ -37,6 +37,17 @@ export interface ProjectDeleteRequest {
   id: string
 }
 
+export interface ProjectRenameRequest {
+  id: string
+  name: string
+}
+
+export interface FileUploadResponse {
+  ok: boolean
+  file?: string
+  error?: string
+}
+
 // ── Files ─────────────────────────────────────────────────────────────────────
 
 export interface FileSaveRequest {

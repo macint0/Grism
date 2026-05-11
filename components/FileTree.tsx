@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 interface FileTreeProps {
   projectId: string
@@ -9,6 +9,7 @@ interface FileTreeProps {
   onFileSelect: (file: string) => void
   onFileCreate: (name: string) => void
   onFileDelete: (file: string) => void
+  onFileUploaded: () => void
 }
 
 function fileIcon(name: string) {
@@ -20,33 +21,67 @@ function fileIcon(name: string) {
 }
 
 export default function FileTree({
+  projectId,
   files,
   activeFile,
   onFileSelect,
   onFileCreate,
   onFileDelete,
+  onFileUploaded,
 }: FileTreeProps) {
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
+  const uploadRef = useRef<HTMLInputElement>(null)
 
   function submitCreate() {
-    const name = newName.trim()
-    if (name) onFileCreate(name)
+    let name = newName.trim()
+    if (!name) { setCreating(false); return }
+    if (!name.includes('.')) name += '.tex'
+    onFileCreate(name)
     setNewName('')
     setCreating(false)
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const formData = new FormData()
+    formData.append('file', file)
+    await fetch(`/api/upload?projectId=${encodeURIComponent(projectId)}`, {
+      method: 'POST',
+      body: formData,
+    })
+    onFileUploaded()
+    e.target.value = ''
   }
 
   return (
     <div className="flex flex-col h-full text-sm select-none">
       <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider flex items-center justify-between">
         <span>Files</span>
-        <button
-          onClick={() => setCreating(true)}
-          className="text-zinc-400 hover:text-zinc-100 transition-colors"
-          title="New file"
-        >
-          +
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => uploadRef.current?.click()}
+            className="text-zinc-400 hover:text-zinc-100 transition-colors"
+            title="Upload image or PDF"
+          >
+            ↑
+          </button>
+          <button
+            onClick={() => setCreating(true)}
+            className="text-zinc-400 hover:text-zinc-100 transition-colors"
+            title="New file"
+          >
+            +
+          </button>
+        </div>
+        <input
+          ref={uploadRef}
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/svg+xml,application/pdf"
+          className="hidden"
+          onChange={handleUpload}
+        />
       </div>
 
       <div className="flex-1 overflow-auto">

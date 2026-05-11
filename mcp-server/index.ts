@@ -145,6 +145,66 @@ server.tool(
   }
 )
 
+server.tool(
+  'render_page',
+  'Render a page of a compiled PDF to PNG so Claude can inspect it visually',
+  {
+    projectId: z.string().describe('Project ID'),
+    mainFile: z.string().describe('Main .tex file (without extension or with)').default('main.tex'),
+    page: z.number().int().positive().describe('Page number to render').default(1),
+    dpi: z.number().int().positive().describe('Resolution in DPI').default(150),
+  },
+  ({ projectId, mainFile, page, dpi }) => {
+    const projectDir = safeProjectDir(projectId)
+    if (!projectDir) return { content: [{ type: 'text', text: 'Invalid project ID' }] }
+
+    const baseName = mainFile.replace(/\.tex$/, '')
+    const pdfPath = path.join(projectDir, '.build', `${baseName}.pdf`)
+    if (!fs.existsSync(pdfPath)) {
+      return { content: [{ type: 'text', text: `PDF not found at .build/${baseName}.pdf — compile first.` }] }
+    }
+
+    const pdftoppm = path.join(TEX_BIN, 'pdftoppm.exe')
+    if (!fs.existsSync(pdftoppm)) {
+      return { content: [{ type: 'text', text: `pdftoppm not found at ${pdftoppm}` }] }
+    }
+
+    const outPrefix = path.join(projectDir, '.build', '_preview')
+
+    // Remove old preview files
+    for (const f of fs.readdirSync(path.join(projectDir, '.build'))) {
+      if (f.startsWith('_preview')) fs.rmSync(path.join(projectDir, '.build', f))
+    }
+
+    const result = spawnSync(pdftoppm, [
+      '-r', String(dpi),
+      '-png',
+      '-f', String(page),
+      '-l', String(page),
+      pdfPath,
+      outPrefix,
+    ], { cwd: projectDir })
+
+    const previews = fs.readdirSync(path.join(projectDir, '.build'))
+      .filter(f => f.startsWith('_preview') && f.endsWith('.png'))
+      .sort()
+
+    if (previews.length === 0) {
+      const err = result.stderr?.toString() ?? 'unknown error'
+      return { content: [{ type: 'text', text: `Render failed: ${err}` }] }
+    }
+
+    const pngData = fs.readFileSync(path.join(projectDir, '.build', previews[0]))
+    return {
+      content: [{
+        type: 'image',
+        data: pngData.toString('base64'),
+        mimeType: 'image/png',
+      }],
+    }
+  }
+)
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 
 const transport = new StdioServerTransport()

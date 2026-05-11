@@ -32,6 +32,7 @@ export default function Editor({ value, onChange }: EditorProps) {
             onChangeRef.current(update.state.doc.toString())
           }
         }),
+        EditorView.lineWrapping,
         EditorView.theme({
           '&': { height: '100%' },
           '.cm-scroller': { overflow: 'auto' },

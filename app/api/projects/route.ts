@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { listProjects, createProject, deleteProject } from '@/lib/projects'
-import type { ProjectCreateRequest, ProjectDeleteRequest } from '@/lib/types'
+import { listProjects, createProject, deleteProject, renameProject } from '@/lib/projects'
+import type { ProjectCreateRequest, ProjectDeleteRequest, ProjectRenameRequest } from '@/lib/types'
 
 export async function GET() {
   const projects = listProjects()
@@ -14,6 +14,15 @@ export async function POST(request: NextRequest) {
   }
   const project = createProject(name.trim())
   return NextResponse.json(project)
+}
+
+export async function PATCH(request: NextRequest) {
+  const { id, name } = await request.json() as ProjectRenameRequest
+  if (!id || !name?.trim()) {
+    return NextResponse.json({ error: 'ID and name required' }, { status: 400 })
+  }
+  renameProject(id, name.trim())
+  return NextResponse.json({ ok: true })
 }
 
 export async function DELETE(request: NextRequest) {

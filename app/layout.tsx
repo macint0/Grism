@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
+import CodeUpdateBanner from '@/components/CodeUpdateBanner'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -25,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
       <body className="h-full bg-zinc-900 text-zinc-100 antialiased flex flex-col">
+        <CodeUpdateBanner />
         {children}
       </body>
     </html>
