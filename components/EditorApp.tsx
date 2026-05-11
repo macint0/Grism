@@ -32,6 +32,8 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
   const [chatOpen, setChatOpen] = useState(false)
 
   const savedRef = useRef<string>('')
+  const contentRef = useRef<string>('')
+  const [diskChanged, setDiskChanged] = useState(false)
 
   // ── Load files when project changes ─────────────────────────────────────────
 
@@ -58,9 +60,39 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
     setLog('')
   }, [])
 
+  useEffect(() => { contentRef.current = content }, [content])
+
   useEffect(() => {
     loadFiles(activeProjectId)
   }, [activeProjectId, loadFiles])
+
+  // ── Poll open file for external changes ──────────────────────────────────────
+
+  useEffect(() => {
+    if (!activeProjectId || !activeFile) return
+    setDiskChanged(false)
+
+    const poll = async () => {
+      try {
+        const res = await fetch(
+          `/api/files?projectId=${encodeURIComponent(activeProjectId)}&file=${encodeURIComponent(activeFile)}`
+        )
+        const data = await res.json() as { content?: string }
+        const diskContent = data.content ?? ''
+        if (diskContent === savedRef.current) return
+        const hasUnsavedEdits = contentRef.current !== savedRef.current
+        savedRef.current = diskContent
+        if (!hasUnsavedEdits) {
+          setContent(diskContent)
+        } else {
+          setDiskChanged(true)
+        }
+      } catch { /* ignore */ }
+    }
+
+    const interval = setInterval(poll, 1500)
+    return () => { clearInterval(interval); setDiskChanged(false) }
+  }, [activeProjectId, activeFile])
 
   // ── File actions ─────────────────────────────────────────────────────────────
 
@@ -298,6 +330,25 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
           </div>
         )}
       </div>
+
+      {/* Disk-change banner */}
+      {diskChanged && (
+        <div className="shrink-0 flex items-center gap-3 px-4 py-2 bg-amber-900/60 border-t border-amber-700 text-amber-200 text-sm">
+          <span>File changed on disk.</span>
+          <button
+            onClick={() => { loadFile(activeProjectId, activeFile); setDiskChanged(false) }}
+            className="underline hover:text-white transition-colors"
+          >
+            Reload
+          </button>
+          <button
+            onClick={() => setDiskChanged(false)}
+            className="text-amber-400 hover:text-white transition-colors ml-auto"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Log panel */}
       {log && (
