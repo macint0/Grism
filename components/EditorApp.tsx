@@ -35,6 +35,15 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
   const savedRef = useRef<string>('')
   const contentRef = useRef<string>('')
   const [diskChanged, setDiskChanged] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [jumpLine, setJumpLine] = useState<{ line: number; key: number } | null>(null)
+
+  const showToast = useCallback((msg: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    setToast(msg)
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000)
+  }, [])
 
   // ── Load files when project changes ─────────────────────────────────────────
 
@@ -92,6 +101,7 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
         savedRef.current = diskContent
         if (!hasUnsavedEdits) {
           setContent(diskContent)
+          showToast('File updated')
         } else {
           setDiskChanged(true)
         }
@@ -215,6 +225,24 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
       setCompiling(false)
     }
   }, [activeProjectId, engine, activeFile, content])
+
+  // ── SyncTeX inverse search ───────────────────────────────────────────────────
+
+  const handlePageClick = useCallback(async (page: number, pdfX: number, pdfY: number) => {
+    const res = await fetch('/api/synctex', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: activeProjectId, mainFile: activeFile, page, x: pdfX, y: pdfY }),
+    })
+    const data = await res.json() as { ok: boolean; file?: string; line?: number; error?: string }
+    if (!data.ok || !data.line) return
+    if (data.file && data.file !== activeFile && files.includes(data.file)) {
+      await handleFileSelect(data.file)
+      setTimeout(() => setJumpLine(prev => ({ line: data.line!, key: (prev?.key ?? 0) + 1 })), 150)
+    } else {
+      setJumpLine(prev => ({ line: data.line!, key: (prev?.key ?? 0) + 1 }))
+    }
+  }, [activeProjectId, activeFile, files, handleFileSelect])
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -340,7 +368,7 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
         {/* Editor */}
         <div className="flex-1 flex flex-col min-h-0 border-r border-zinc-700">
           {activeFile ? (
-            <Editor value={content} onChange={setContent} />
+            <Editor value={content} onChange={setContent} jumpLine={jumpLine} />
           ) : (
             <div className="flex h-full items-center justify-center text-zinc-500 text-sm">
               No file open
@@ -350,7 +378,7 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
 
         {/* PDF preview */}
         <div className="shrink-0 flex flex-col min-h-0 bg-zinc-800 w-[45%]">
-          <PdfPreview pdfData={pdfData} />
+          <PdfPreview pdfData={pdfData} onPageClick={handlePageClick} />
         </div>
 
       </div>
@@ -376,6 +404,13 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
 
       {/* Log panel */}
       {log && <CompileLog log={log} ok={!compileError} />}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-50 bg-indigo-600 text-white text-sm px-4 py-2 rounded shadow-lg pointer-events-none">
+          {toast}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,28 +1,54 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
-interface PdfPreviewProps {
-  pdfData: string | null // base64-encoded PDF
+interface PageDims { width: number; height: number }
+
+// Minimal shape of what pdfjs gives us — third-party, so typed as needed
+interface PDFProxy {
+  numPages: number
+  getPage(n: number): Promise<{ getViewport(o: { scale: number }): PageDims }>
 }
 
-export default function PdfPreview({ pdfData }: PdfPreviewProps) {
+interface PdfPreviewProps {
+  pdfData: string | null
+  onPageClick?: (page: number, pdfX: number, pdfY: number) => void
+}
+
+export default function PdfPreview({ pdfData, onPageClick }: PdfPreviewProps) {
   const [numPages, setNumPages] = useState<number>(0)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const pageDimsRef = useRef<Map<number, PageDims>>(new Map())
 
-  const onLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
-    setNumPages(numPages)
+  const onLoadSuccess = useCallback(async (pdf: PDFProxy) => {
+    setNumPages(pdf.numPages)
     setLoadError(null)
+    pageDimsRef.current.clear()
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i)
+      const vp = page.getViewport({ scale: 1 })
+      pageDimsRef.current.set(i, { width: vp.width, height: vp.height })
+    }
   }, [])
 
   const onLoadError = useCallback((err: Error) => {
     setLoadError(err.message)
   }, [])
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>, pageNumber: number) => {
+    if (!onPageClick) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const dims = pageDimsRef.current.get(pageNumber)
+    if (!dims) return
+    const pdfX = ((e.clientX - rect.left) / rect.width) * dims.width
+    const pdfY = ((e.clientY - rect.top) / rect.height) * dims.height
+    onPageClick(pageNumber, pdfX, pdfY)
+  }, [onPageClick])
 
   if (!pdfData) {
     return (
@@ -40,24 +66,26 @@ export default function PdfPreview({ pdfData }: PdfPreviewProps) {
     )
   }
 
-  const fileUrl = `data:application/pdf;base64,${pdfData}`
-
   return (
     <div className="h-full overflow-auto bg-zinc-200 flex flex-col items-center py-4 gap-4">
       <Document
-        file={fileUrl}
-        onLoadSuccess={onLoadSuccess}
+        file={`data:application/pdf;base64,${pdfData}`}
+        onLoadSuccess={onLoadSuccess as unknown as (pdf: object) => void}
         onLoadError={onLoadError}
         className="flex flex-col items-center gap-4"
       >
-        {Array.from({ length: numPages }, (_, i) => (
-          <Page
-            key={i + 1}
-            pageNumber={i + 1}
-            className="shadow-md"
-            width={600}
-          />
-        ))}
+        {Array.from({ length: numPages }, (_, i) => {
+          const pageNum = i + 1
+          return (
+            <div
+              key={pageNum}
+              onClick={(e) => handleClick(e, pageNum)}
+              className={onPageClick ? 'cursor-crosshair' : undefined}
+            >
+              <Page pageNumber={pageNum} className="shadow-md" width={600} />
+            </div>
+          )
+        })}
       </Document>
     </div>
   )

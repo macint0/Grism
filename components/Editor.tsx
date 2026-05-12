@@ -10,9 +10,10 @@ import { oneDark } from '@codemirror/theme-one-dark'
 interface EditorProps {
   value: string
   onChange: (value: string) => void
+  jumpLine?: { line: number; key: number } | null
 }
 
-export default function Editor({ value, onChange }: EditorProps) {
+export default function Editor({ value, onChange, jumpLine }: EditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
@@ -60,6 +61,18 @@ export default function Editor({ value, onChange }: EditorProps) {
       })
     }
   }, [value])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view || !jumpLine) return
+    const safeLineNo = Math.min(Math.max(1, jumpLine.line), view.state.doc.lines)
+    const lineInfo = view.state.doc.line(safeLineNo)
+    view.dispatch({
+      selection: { anchor: lineInfo.from, head: lineInfo.to },
+      effects: EditorView.scrollIntoView(lineInfo.from, { y: 'center' }),
+    })
+    view.focus()
+  }, [jumpLine])
 
   return <div ref={containerRef} className="h-full w-full overflow-hidden" />
 }

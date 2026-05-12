@@ -80,6 +80,7 @@ export async function compileLatex(
       '-g',
       '-interaction=nonstopmode',
       `-output-directory=${buildDir}`,
+      '-synctex=1',
       mainFile,
     ]
   }
