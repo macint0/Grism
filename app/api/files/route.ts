@@ -25,6 +25,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'File not found' }, { status: 404 })
   }
 
+  const raw = searchParams.get('raw')
+  if (raw === '1') {
+    const MIME: Record<string, string> = {
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+      '.bmp': 'image/bmp', '.pdf': 'application/pdf',
+    }
+    const ext = path.extname(file).toLowerCase()
+    const contentType = MIME[ext] ?? 'application/octet-stream'
+    const data = fs.readFileSync(filePath)
+    return new Response(new Uint8Array(data), {
+      headers: { 'Content-Type': contentType, 'Cache-Control': 'no-store' },
+    })
+  }
+
   const content = fs.readFileSync(filePath, 'utf8')
   return NextResponse.json({ content })
 }

@@ -10,6 +10,12 @@ import type { Project, Engine, CompileResult } from '@/lib/types'
 const Editor = dynamic(() => import('./Editor'), { ssr: false })
 const PdfPreview = dynamic(() => import('./PdfPreview'), { ssr: false })
 
+const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp']
+function isImageFile(file: string): boolean {
+  const lower = file.toLowerCase()
+  return IMAGE_EXTS.some(ext => lower.endsWith(ext))
+}
+
 interface EditorAppProps {
   initialProjects: Project[]
 }
@@ -61,16 +67,21 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadFile = useCallback(async (projectId: string, file: string) => {
+    setActiveFile(file)
+    setPdfData(null)
+    setLog('')
+    if (isImageFile(file)) {
+      savedRef.current = ''
+      setContent('')
+      return
+    }
     const res = await fetch(
       `/api/files?projectId=${encodeURIComponent(projectId)}&file=${encodeURIComponent(file)}`
     )
     const data = await res.json() as { content?: string }
     const loaded = data.content ?? ''
     savedRef.current = loaded
-    setActiveFile(file)
     setContent(loaded)
-    setPdfData(null)
-    setLog('')
   }, [])
 
   useEffect(() => { contentRef.current = content }, [content])
@@ -90,6 +101,7 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
     setDiskChanged(false)
 
     const poll = async () => {
+      if (isImageFile(activeFile)) return
       try {
         const res = await fetch(
           `/api/files?projectId=${encodeURIComponent(activeProjectId)}&file=${encodeURIComponent(activeFile)}`
@@ -116,7 +128,7 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
 
   const handleFileSelect = useCallback(async (file: string) => {
     // Auto-save current file
-    if (activeFile && content !== savedRef.current) {
+    if (activeFile && !isImageFile(activeFile) && content !== savedRef.current) {
       await fetch('/api/files', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -342,7 +354,7 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
 
         <button
           onClick={handleCompile}
-          disabled={compiling || !activeFile}
+          disabled={compiling || !activeFile || isImageFile(activeFile)}
           className="px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition-colors shrink-0"
         >
           {compiling ? 'Compiling…' : 'Compile'}
@@ -367,12 +379,21 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
 
         {/* Editor */}
         <div className="flex-1 flex flex-col min-h-0 border-r border-zinc-700">
-          {activeFile ? (
-            <Editor value={content} onChange={setContent} jumpLine={jumpLine} />
-          ) : (
+          {!activeFile ? (
             <div className="flex h-full items-center justify-center text-zinc-500 text-sm">
               No file open
             </div>
+          ) : isImageFile(activeFile) ? (
+            <div className="flex h-full items-center justify-center overflow-auto bg-zinc-950 p-6">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/api/files?projectId=${encodeURIComponent(activeProjectId)}&file=${encodeURIComponent(activeFile)}&raw=1`}
+                alt={activeFile}
+                className="max-w-full max-h-full object-contain rounded shadow-lg"
+              />
+            </div>
+          ) : (
+            <Editor value={content} onChange={setContent} jumpLine={jumpLine} />
           )}
         </div>
 

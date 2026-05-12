@@ -29,7 +29,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CompileRe
     return NextResponse.json({ ok: false, log: 'Invalid project ID' })
   }
 
-  if (content !== undefined) {
+  if (content !== undefined && mainFile.endsWith('.tex')) {
     const filePath = path.join(projectDir, mainFile)
     fs.writeFileSync(filePath, content, 'utf8')
   }
