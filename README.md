@@ -4,11 +4,16 @@ A local LaTeX editor with an MCP server so Claude Code can read, write, and comp
 
 ## What it is
 
-Grism is a Next.js app that runs on your machine. It gives you a basic LaTeX editor with PDF preview, and more importantly, an MCP server that plugs into Claude Code so you can work on LaTeX with Claude like a pair programmer.
+Grism is two things:
+
+1. **A Next.js editor app** — file tree, CodeMirror editor, PDF preview, multi-engine compile (pdflatex / xelatex / lualatex).
+2. **An MCP server** — exposes your LaTeX projects to Claude Code so Claude can read, edit, and compile files like a pair programmer.
+
+The MCP server is the main focus. The editor app is a convenient local UI for the same project files.
 
 ## MCP server
 
-Add to `~/.mcp.json`:
+Add to `~/.mcp.json` (or your Claude Code MCP config):
 
 ```json
 {
@@ -16,7 +21,7 @@ Add to `~/.mcp.json`:
     "grism": {
       "command": "node",
       "args": ["--import", "tsx/esm", "mcp-server/index.ts"],
-      "cwd": "/path/to/grism"
+      "cwd": "C:\\path\\to\\Grism"
     }
   }
 }
@@ -31,6 +36,7 @@ Claude Code gets these tools:
 | `read_file` | Read a file |
 | `write_file` | Write a file |
 | `compile` | Compile with pdflatex / xelatex / lualatex |
+| `render_page` | Render a PDF page to PNG for visual inspection |
 
 ## Setup
 
@@ -49,27 +55,23 @@ npm install
 
 ### Configure
 
-Create `.env.local`:
-
-```env
-ANTHROPIC_API_KEY=your_api_key_here
-```
-
-Without a key, the chat panel runs in mock mode — the rest of the app still works.
-
-If TeX Live is not at `C:\texlive\2026\bin\windows`, set:
+If TeX Live is not at `C:\texlive\2026\bin\windows`, set in `.env.local`:
 
 ```env
 TEX_BIN_PATH=C:\path\to\texlive\bin\windows
 ```
 
-### Run
+### Run the editor
 
 ```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+### Run the MCP server
+
+The MCP server runs as a stdio process launched by Claude Code — you don't start it manually. Just add the config above and restart Claude Code.
 
 ## License
 

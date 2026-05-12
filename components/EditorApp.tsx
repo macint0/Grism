@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import FileTree from './FileTree'
 import CompilerDropdown from './CompilerDropdown'
-import ChatPanel from './ChatPanel'
 import CompileLog from './CompileLog'
 import type { Project, Engine, CompileResult } from '@/lib/types'
 
@@ -30,7 +29,6 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
   const [compileError, setCompileError] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
   const [creatingProject, setCreatingProject] = useState(false)
-  const [chatOpen, setChatOpen] = useState(false)
   const [renamingProject, setRenamingProject] = useState(false)
   const [renameValue, setRenameValue] = useState('')
 
@@ -322,16 +320,6 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
           {compiling ? 'Compiling…' : 'Compile'}
         </button>
 
-        <button
-          onClick={() => setChatOpen((o) => !o)}
-          className={`px-3 py-1.5 rounded text-sm font-medium transition-colors shrink-0 ${
-            chatOpen
-              ? 'bg-violet-600 hover:bg-violet-500 text-white'
-              : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-200'
-          }`}
-        >
-          Claude
-        </button>
       </div>
 
       {/* 3-column body */}
@@ -361,20 +349,10 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
         </div>
 
         {/* PDF preview */}
-        <div className={`shrink-0 flex flex-col min-h-0 bg-zinc-800 ${chatOpen ? 'w-[35%]' : 'w-[45%]'}`}>
+        <div className="shrink-0 flex flex-col min-h-0 bg-zinc-800 w-[45%]">
           <PdfPreview pdfData={pdfData} />
         </div>
 
-        {/* Chat panel */}
-        {chatOpen && (
-          <div className="w-72 shrink-0 flex flex-col min-h-0 border-l border-zinc-700">
-            <ChatPanel
-              projectId={activeProjectId}
-              openFile={activeFile}
-              openFileContent={content}
-            />
-          </div>
-        )}
       </div>
 
       {/* Disk-change banner */}
