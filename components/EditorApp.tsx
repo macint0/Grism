@@ -424,7 +424,13 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
       )}
 
       {/* Log panel */}
-      {log && <CompileLog log={log} ok={!compileError} />}
+      {log && (
+        <CompileLog
+          log={log}
+          ok={!compileError}
+          onLineClick={(line) => setJumpLine(prev => ({ line, key: (prev?.key ?? 0) + 1 }))}
+        />
+      )}
 
       {/* Toast */}
       {toast && (
