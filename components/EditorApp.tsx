@@ -40,6 +40,7 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
 
   const savedRef = useRef<string>('')
   const contentRef = useRef<string>('')
+  const filesRef = useRef<string[]>([])
   const [diskChanged, setDiskChanged] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -85,6 +86,7 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
   }, [])
 
   useEffect(() => { contentRef.current = content }, [content])
+  useEffect(() => { filesRef.current = files }, [files])
 
   useEffect(() => {
     if (activeFile) localStorage.setItem(`grism:openFile:${activeProjectId}`, activeFile)
@@ -123,6 +125,24 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
     const interval = setInterval(poll, 1500)
     return () => { clearInterval(interval); setDiskChanged(false) }
   }, [activeProjectId, activeFile])
+
+  // ── Poll file list for external additions/removals ───────────────────────────
+
+  useEffect(() => {
+    if (!activeProjectId) return
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/files?projectId=${encodeURIComponent(activeProjectId)}`)
+        const data = await res.json() as { files: string[] }
+        const incoming = data.files ?? []
+        const current = filesRef.current
+        const changed = incoming.length !== current.length || incoming.some((f, i) => f !== current[i])
+        if (changed) setFiles(incoming)
+      } catch { /* ignore */ }
+    }
+    const interval = setInterval(poll, 2000)
+    return () => clearInterval(interval)
+  }, [activeProjectId])
 
   // ── File actions ─────────────────────────────────────────────────────────────
 

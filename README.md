@@ -46,6 +46,7 @@ Claude Code gets these tools:
 - Structured compile error log — each error is a card showing message, file, and line; click to jump
 - Image preview for PNG/JPG/SVG files in the file tree
 - Toast notification when Claude edits a file via MCP and the editor auto-reloads
+- File tree auto-refreshes when files are added or removed on disk — no browser refresh needed
 - Multi-engine compile: pdflatex, xelatex, lualatex, tectonic
 
 ## Setup

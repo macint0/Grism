@@ -110,6 +110,39 @@ server.tool(
 )
 
 server.tool(
+  'create_project',
+  'Create a new LaTeX project with a starter main.tex',
+  { name: z.string().min(1).describe('Human-readable project name') },
+  ({ name }) => {
+    const id =
+      name
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .slice(0, 40) +
+      '-' +
+      Date.now()
+
+    const projectDir = path.join(PROJECTS_DIR, id)
+    fs.mkdirSync(projectDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(projectDir, '.prism.json'),
+      JSON.stringify({ name }),
+      'utf8'
+    )
+    fs.writeFileSync(
+      path.join(projectDir, 'main.tex'),
+      `\\documentclass{article}\n\\usepackage{amsmath}\n\n\\title{${name}}\n\\author{You}\n\\date{\\today}\n\n\\begin{document}\n\n\\maketitle\n\n\\section{Introduction}\nStart writing your document here.\n\n\\end{document}\n`,
+      'utf8'
+    )
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ id, name }) }],
+    }
+  }
+)
+
+server.tool(
   'compile',
   'Compile a LaTeX project and return the log',
   {
