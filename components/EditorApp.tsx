@@ -258,6 +258,22 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
     }
   }, [activeProjectId, engine, activeFile, content])
 
+  // ── Ctrl+Enter to compile ────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        const tag = (document.activeElement as HTMLElement)?.tagName?.toLowerCase()
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return
+        if (compiling || !activeFile || isImageFile(activeFile)) return
+        e.preventDefault()
+        handleCompile()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [compiling, activeFile, handleCompile])
+
   // ── SyncTeX inverse search ───────────────────────────────────────────────────
 
   const handlePageClick = useCallback(async (page: number, pdfX: number, pdfY: number) => {
@@ -419,7 +435,7 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
 
         {/* PDF preview */}
         <div className="shrink-0 flex flex-col min-h-0 bg-zinc-800 w-[45%]">
-          <PdfPreview pdfData={pdfData} onPageClick={handlePageClick} />
+          <PdfPreview pdfData={pdfData} projectId={activeProjectId} onPageClick={handlePageClick} />
         </div>
 
       </div>

@@ -35,19 +35,21 @@ Claude Code gets these tools:
 | `list_files` | List files in a project |
 | `read_file` | Read a file |
 | `write_file` | Write a file |
+| `create_project` | Create a new project with a starter `main.tex` |
 | `compile` | Compile with pdflatex / xelatex / lualatex |
 | `render_page` | Render a PDF page to PNG so Claude can see the output |
 
 ## Editor app features
 
 - CodeMirror editor with LaTeX syntax highlighting
-- PDF preview with page navigation and jump-to-page
+- PDF preview with page navigation, jump-to-page, and zoom controls (50%–300%)
+- **Ctrl+Enter** to compile from anywhere in the editor
 - **Click anywhere on the PDF to jump to that line in the editor** (SyncTeX inverse search)
 - Structured compile error log — each error is a card showing message, file, and line; click to jump
 - Image preview for PNG/JPG/SVG files in the file tree
 - Toast notification when Claude edits a file via MCP and the editor auto-reloads
 - File tree auto-refreshes when files are added or removed on disk — no browser refresh needed
-- Multi-engine compile: pdflatex, xelatex, lualatex, tectonic
+- Multi-engine compile: pdflatex, xelatex, lualatex
 
 ## Setup
 

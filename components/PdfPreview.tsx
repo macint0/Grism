@@ -16,18 +16,29 @@ interface PDFProxy {
 
 interface PdfPreviewProps {
   pdfData: string | null
+  projectId: string
   onPageClick?: (page: number, pdfX: number, pdfY: number) => void
 }
 
-export default function PdfPreview({ pdfData, onPageClick }: PdfPreviewProps) {
+const BASE_WIDTH = 600
+
+export default function PdfPreview({ pdfData, projectId, onPageClick }: PdfPreviewProps) {
   const [numPages, setNumPages] = useState<number>(0)
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [jumpInput, setJumpInput] = useState('')
+  const [zoom, setZoom] = useState(1)
   const pageDimsRef = useRef<Map<number, PageDims>>(new Map())
   const pageRefsMap = useRef<Map<number, HTMLDivElement>>(new Map())
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
+  const lastRestoredProjectRef = useRef('')
+  const scrollSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // When project changes, mark that we need to restore scroll on next PDF load
+  useEffect(() => {
+    lastRestoredProjectRef.current = ''
+  }, [projectId])
 
   const onLoadSuccess = useCallback(async (pdf: PDFProxy) => {
     setNumPages(pdf.numPages)
@@ -39,11 +50,28 @@ export default function PdfPreview({ pdfData, onPageClick }: PdfPreviewProps) {
       const vp = page.getViewport({ scale: 1 })
       pageDimsRef.current.set(i, { width: vp.width, height: vp.height })
     }
-  }, [])
+    // Restore saved scroll when switching to a new project; skip on re-compile
+    if (lastRestoredProjectRef.current !== projectId) {
+      lastRestoredProjectRef.current = projectId
+      const saved = localStorage.getItem(`grism:pdfScroll:${projectId}`)
+      const top = saved ? parseInt(saved, 10) : 0
+      requestAnimationFrame(() => {
+        scrollContainerRef.current?.scrollTo({ top })
+      })
+    }
+  }, [projectId])
 
   const onLoadError = useCallback((err: Error) => {
     setLoadError(err.message)
   }, [])
+
+  const handleScroll = useCallback(() => {
+    if (scrollSaveTimerRef.current) clearTimeout(scrollSaveTimerRef.current)
+    scrollSaveTimerRef.current = setTimeout(() => {
+      const top = scrollContainerRef.current?.scrollTop ?? 0
+      localStorage.setItem(`grism:pdfScroll:${projectId}`, String(top))
+    }, 250)
+  }, [projectId])
 
   // Track which page is most visible using IntersectionObserver
   useEffect(() => {
@@ -96,10 +124,6 @@ export default function PdfPreview({ pdfData, onPageClick }: PdfPreviewProps) {
     onPageClick(pageNumber, pdfX, pdfY)
   }, [onPageClick])
 
-  useEffect(() => {
-    if (pdfData) scrollContainerRef.current?.scrollTo({ top: 0 })
-  }, [pdfData])
-
   if (!pdfData) {
     return (
       <div className="flex h-full items-center justify-center text-zinc-400 text-sm">
@@ -148,11 +172,33 @@ export default function PdfPreview({ pdfData, onPageClick }: PdfPreviewProps) {
         >
           ›
         </button>
+
+        <div className="flex-1" />
+
+        {/* Zoom controls */}
+        <button
+          onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))}
+          disabled={zoom <= 0.5}
+          className="text-zinc-400 hover:text-zinc-100 disabled:opacity-30 text-sm w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-700 transition-colors"
+          title="Zoom out"
+        >
+          −
+        </button>
+        <span className="text-zinc-400 text-xs w-10 text-center select-none">{Math.round(zoom * 100)}%</span>
+        <button
+          onClick={() => setZoom(z => Math.min(3, +(z + 0.25).toFixed(2)))}
+          disabled={zoom >= 3}
+          className="text-zinc-400 hover:text-zinc-100 disabled:opacity-30 text-sm w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-700 transition-colors"
+          title="Zoom in"
+        >
+          +
+        </button>
       </div>
 
       {/* Scrollable pages */}
       <div
         ref={scrollContainerRef}
+        onScroll={handleScroll}
         className="flex-1 overflow-auto bg-zinc-200 flex flex-col items-center py-4 gap-2"
       >
         <Document
@@ -177,7 +223,7 @@ export default function PdfPreview({ pdfData, onPageClick }: PdfPreviewProps) {
                   onClick={(e) => handleClick(e, pageNum)}
                   className={onPageClick ? 'cursor-crosshair' : undefined}
                 >
-                  <Page pageNumber={pageNum} className="shadow-md" width={600} />
+                  <Page pageNumber={pageNum} className="shadow-md" width={Math.round(BASE_WIDTH * zoom)} />
                 </div>
                 <span className="text-zinc-500 text-xs pb-2 select-none">
                   {pageNum} / {numPages}
