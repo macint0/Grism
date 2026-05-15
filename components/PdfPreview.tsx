@@ -17,12 +17,13 @@ interface PDFProxy {
 interface PdfPreviewProps {
   pdfData: string | null
   projectId: string
+  fileName?: string
   onPageClick?: (page: number, pdfX: number, pdfY: number) => void
 }
 
 const BASE_WIDTH = 600
 
-export default function PdfPreview({ pdfData, projectId, onPageClick }: PdfPreviewProps) {
+export default function PdfPreview({ pdfData, projectId, fileName = 'document.pdf', onPageClick }: PdfPreviewProps) {
   const [numPages, setNumPages] = useState<number>(0)
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -114,6 +115,20 @@ export default function PdfPreview({ pdfData, projectId, onPageClick }: PdfPrevi
     setJumpInput('')
   }, [jumpInput, numPages, scrollToPage])
 
+  const handleDownload = useCallback(() => {
+    if (!pdfData) return
+    const bytes = atob(pdfData)
+    const arr = new Uint8Array(bytes.length)
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i)
+    const blob = new Blob([arr], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [pdfData, fileName])
+
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>, pageNumber: number) => {
     if (!onPageClick) return
     const rect = e.currentTarget.getBoundingClientRect()
@@ -192,6 +207,16 @@ export default function PdfPreview({ pdfData, projectId, onPageClick }: PdfPrevi
           title="Zoom in"
         >
           +
+        </button>
+
+        <div className="w-px h-4 bg-zinc-600 mx-1" />
+
+        <button
+          onClick={handleDownload}
+          className="text-zinc-400 hover:text-zinc-100 text-xs px-2 py-0.5 rounded hover:bg-zinc-700 transition-colors"
+          title="Download PDF"
+        >
+          ↓ PDF
         </button>
       </div>
 

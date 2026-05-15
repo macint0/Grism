@@ -435,7 +435,12 @@ export default function EditorApp({ initialProjects }: EditorAppProps) {
 
         {/* PDF preview */}
         <div className="shrink-0 flex flex-col min-h-0 bg-zinc-800 w-[45%]">
-          <PdfPreview pdfData={pdfData} projectId={activeProjectId} onPageClick={handlePageClick} />
+          <PdfPreview
+            pdfData={pdfData}
+            projectId={activeProjectId}
+            fileName={activeFile.replace(/\.tex$/, '.pdf')}
+            onPageClick={handlePageClick}
+          />
         </div>
 
       </div>
