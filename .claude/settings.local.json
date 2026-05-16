@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__grism__compile",
+      "mcp__grism__write_file",
+      "mcp__grism__render_page"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "grism"
+  ]
+}

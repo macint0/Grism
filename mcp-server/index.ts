@@ -38,7 +38,7 @@ function walkDir(dir: string, root: string): string[] {
 // ── MCP server ────────────────────────────────────────────────────────────────
 
 const server = new McpServer({
-  name: 'prism',
+  name: 'grism',
   version: '1.0.0',
 })
 
